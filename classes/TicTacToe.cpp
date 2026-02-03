@@ -31,9 +31,7 @@ void TicTacToe::setUpBoard()
     _gameOptions.rowY = 3;
     _grid->initializeSquares(80, "square.png");
 
-    if (gameHasAI()) {
-        setAIPlayer(AI_PLAYER);
-    }
+    clearAIPlayers();
 
     startGame();
 }

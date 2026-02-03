@@ -40,9 +40,9 @@ void Othello::setUpBoard() {
     placePiece(4, 3, blackPlayer);  // Black at (4,3)
     placePiece(3, 4, blackPlayer);  // Black at (3,4)
 
-    if (gameHasAI()) {
-        setAIPlayer(AI_PLAYER);
-    }
+    // Default 2 human players. Toggle AI in the Settings window.
+    clearAIPlayers();
+
     
     startGame();
 }

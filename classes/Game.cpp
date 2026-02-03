@@ -3,10 +3,12 @@
 #include "BitHolder.h"
 #include "Turn.h"
 #include "../Application.h"
+#include <cmath>
+
 
 Game::Game()
 {
-	_gameOptions.AIPlayer = false;
+	_gameOptions.AIPlayer = -1;
 	_gameOptions.AIPlaying = false;
 	_gameOptions.currentTurnNo = 0;
 	_gameOptions.gameNumber = -1;
@@ -73,10 +75,44 @@ void Game::setNumberOfPlayers(unsigned int n)
 
 void Game::setAIPlayer(unsigned int playerNumber)
 {
+	for (auto* p : _players)
+	{
+		p->setAIPlayer(false);
+	}
+
 	_players.at(playerNumber)->setAIPlayer(true);
-	_gameOptions.AIPlayer = playerNumber;
-	_gameOptions.AIPlayer = true;
+
+	_gameOptions.AIPlayer = (int)playerNumber;
+	_gameOptions.AIPlaying = true;
 }
+
+
+void Game::clearAIPlayers()
+{
+	for (auto* p : _players)
+	{
+		p->setAIPlayer(false);
+	}
+	_gameOptions.AIPlaying = false;
+	_gameOptions.AIvsAI = false;
+	_gameOptions.AIPlayer = -1;
+}
+
+void Game::setAIPlaying(bool enabled, unsigned int aiPlayer)
+{
+	if (!gameHasAI())
+		return;
+
+	if (enabled)
+	{
+		setAIPlayer(aiPlayer);
+	}
+	else
+	{
+		clearAIPlayers();
+	}
+}
+
 
 void Game::startGame()
 {
@@ -108,7 +144,7 @@ void Game::endTurn()
 //
 void Game::scanForMouse()
 {
-	if (gameHasAI() && getCurrentPlayer()->isAIPlayer())
+	if (_gameOptions.AIPlaying && gameHasAI() && getCurrentPlayer()->isAIPlayer())
 	{
 		return;
 	}
@@ -316,7 +352,7 @@ void Game::mouseMoved(ImVec2 &location, Entity *entity)
 	{
 		// Get the mouse position, and see if we've moved 3 pixels since the mouseDown:
 		ImVec2 pos = location;
-		if (fabs(pos.x - _dragStartPos.x) >= 12 || fabs(pos.y - _dragStartPos.y) >= 12)
+		if (std::fabs(pos.x - _dragStartPos.x) >= 12.0f || std::fabs(pos.y - _dragStartPos.y) >= 12.0f)
 			_dragMoved = true;
 
 		// Move the _dragBit (without animation -- it's unnecessary and slows down responsiveness):

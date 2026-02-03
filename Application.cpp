@@ -3,6 +3,8 @@
 #include "classes/TicTacToe.h"
 #include "classes/Checkers.h"
 #include "classes/Othello.h"
+#include "classes/Connect4.h"
+
 
 namespace ClassGame {
         //
@@ -52,6 +54,10 @@ namespace ClassGame {
                         game = new Checkers();
                         game->setUpBoard();
                     }
+                    if (ImGui::Button("Start Connect 4")) {
+                        game = new Connect4();
+                        game->setUpBoard();
+                    }
                     if (ImGui::Button("Start Othello")) {
                         game = new Othello();
                         game->setUpBoard();
@@ -59,12 +65,26 @@ namespace ClassGame {
                 } else {
                     ImGui::Text("Current Player Number: %d", game->getCurrentPlayer()->playerNumber());
                     ImGui::Text("Current Board State: %s", game->stateString().c_str());
+
+                    if (game->gameHasAI()) {
+                        bool aiEnabled = game->_gameOptions.AIPlaying;
+                        if (ImGui::Checkbox("Play vs AI", &aiEnabled)) {
+                            // player 1 becomes AI when enabled
+                            game->setAIPlaying(aiEnabled, 1);
+                        }
+
+                        if (game->_gameOptions.AIPlaying) {
+                            ImGui::Text("AI Player: %d", game->getAIPlayer());
+                        }
+                    }
                 }
                 ImGui::End();
 
                 ImGui::Begin("GameWindow");
                 if (game) {
-                    if (game->gameHasAI() && (game->getCurrentPlayer()->isAIPlayer() || game->_gameOptions.AIvsAI))
+                    if (game->_gameOptions.AIPlaying &&
+                        game->gameHasAI() &&
+                        (game->getCurrentPlayer()->isAIPlayer() || game->_gameOptions.AIvsAI))
                     {
                         game->updateAI();
                     }
@@ -91,3 +111,4 @@ namespace ClassGame {
             }
         }
 }
+// EOF 

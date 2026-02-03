@@ -63,6 +63,7 @@ add_executable(demo Application.cpp
                           classes/TicTacToe.cpp
                           classes/Checkers.cpp
                           classes/Othello.cpp
+                          classes/Connect4.cpp
                           ${BCKD_FILE}
                           ${MAIN_FILE}
                           ${IMPL_FILE}
@@ -76,6 +77,7 @@ elseif(WINDOWS)
         d3d11.lib 
         d3dcompiler.lib 
         dxgi.lib 
+        dwmapi.lib
         user32.lib 
         gdi32.lib 
         winmm.lib
