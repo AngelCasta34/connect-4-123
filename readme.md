@@ -1,11 +1,65 @@
-Using the provided code that can be downloaded from this github add a new class that inherits from game.cpp in the same way TicTacToe.cpp does and implement a working version of the game Connect 4. The game should be added as a fourth choice from the menu so the choices are Tic Tac Toe, Checkers, Othello and now Connect 4.
+# Connect 4 + AI 
 
-The game must be playable by both by 2 people and vs. an AI. Your implementation must check for the winning condition, and display that on the right hand side the same way the current setup does for tic-tac-toe. The stopGame() method is expected to clean up and delete any memory allocated.
+This project extends the existing game framework by adding Connect 4 as a fourth playable game and improving the AI system so all supported games can be played in either two-player (human vs human) mode or player vs AI mode.
 
-Look at the new Grid.cpp class and see how it is used in Checkers.cpp for a good understanding about laying out a useable grid.
+The goal of these changes was to match the behavior of Tic-Tac-Toe while fixing limitations that previously forced AI on by default.
 
-For extra credit, when a game piece is added to the board, make it animate into place instead of just appearing in it's final spot.
+Key Changes
 
-Graphic files are provided for the game pieces called yellow.png and red.png.
+1. Added Connect 4
 
-For the submission, create a new github based on the above code-base and provide a link to that along with a complete readme.md on how your implementation works.
+Implemented a new Connect4 class that inherits from Game
+
+Uses the existing Grid system (7×6 board)
+
+Supports:
+
+Two human players
+
+Player vs AI
+
+Win and draw detection
+
+Integrated as a new menu option alongside Tic-Tac-Toe, Checkers, and Othello
+
+2. AI Toggle Support (All Games)
+
+Games now default to two human players
+
+A “Play vs AI” checkbox was added to the Settings panel
+
+When enabled:
+
+Player 1 becomes the AI
+
+The AI automatically plays on its turn
+
+When disabled:
+
+Both players are human again
+
+This behavior is consistent across Tic-Tac-Toe, Othello, and Connect 4.
+
+3. Game System Improvements
+
+Fixed a bug in setAIPlayer where the AI player index was being overwritten
+
+Added helper functions:
+
+setAIPlaying(bool enabled, unsigned int aiPlayer)
+
+clearAIPlayers()
+
+Updated input handling so human input is only blocked when AI mode is actually enabled
+
+Ensured AI logic only runs when “Play vs AI” is turned on
+
+How to Play
+
+Launch the application
+
+Choose a game from the menu
+
+Play in two-player mode by default
+
+Enable Play vs AI in the Settings panel to switch to player vs AI
