@@ -42,7 +42,15 @@ private:
     Player* ownerAt(int x, int y) const;
     bool fourInARowFrom(int x, int y, int dx, int dy, Player* p) const;
 
-    // AI helpers (simple, good enough for grading)
-    int findWinningMoveFor(Player* p);
+    // AI helpers
     int firstValidMovePreferCenter();
+
+    // Negamax with alpha-beta
+    using Board = std::array<std::array<int, COLS>, ROWS>;
+    Board getBoardState() const;
+    int   dropOnBoard(Board& board, int col, int playerIdx) const;
+    bool  checkWinOnBoard(const Board& board, int playerIdx) const;
+    int   scoreWindow(int a, int b, int c, int d, int playerIdx) const;
+    int   evaluateBoard(const Board& board, int playerIdx) const;
+    int   negamax(Board& board, int depth, int alpha, int beta, int playerIdx) const;
 };

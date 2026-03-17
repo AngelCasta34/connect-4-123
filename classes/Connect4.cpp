@@ -65,8 +65,11 @@ bool Connect4::actionForEmptyHolder(BitHolder& holder)
     if (target->bit()) return false; // should never happen, but safe
 
     Bit* bit = pieceForPlayer(getCurrentPlayer()->playerNumber());
-    bit->setPosition(target->getPosition());
+    // Start piece one square above the board, animate it falling down
+    ChessSquare* topSquare = _grid->getSquare(col, 0);
+    bit->setPosition(ImVec2(target->getPosition().x, topSquare->getPosition().y - 80.0f));
     target->setBit(bit);
+    bit->moveTo(target->getPosition());
 
     endTurn();
     return true;
@@ -192,7 +195,6 @@ void Connect4::setStateString(const std::string& s)
 
 int Connect4::firstValidMovePreferCenter()
 {
-    // Good default for Connect 4: prefer center columns
     std::array<int, COLS> order = {3, 2, 4, 1, 5, 0, 6};
     for (int col : order)
     {
@@ -202,57 +204,182 @@ int Connect4::firstValidMovePreferCenter()
     return -1;
 }
 
-int Connect4::findWinningMoveFor(Player* p)
+//Negamax helpers 
+
+Connect4::Board Connect4::getBoardState() const
 {
-    // Try each column: if placing a piece there makes p win, return that col
-    for (int col = 0; col < COLS; ++col)
+    Board board = {};
+    for (int y = 0; y < ROWS; ++y)
+        for (int x = 0; x < COLS; ++x)
+        {
+            Player* p = ownerAt(x, y);
+            if (p) board[y][x] = p->playerNumber() + 1; // 1 or 2
+        }
+    return board;
+}
+
+int Connect4::dropOnBoard(Board& board, int col, int playerIdx) const
+{
+    for (int row = ROWS - 1; row >= 0; --row)
     {
-        ChessSquare* target = lowestEmptyInColumn(col);
-        if (!target) continue;
-
-        // Temporarily place a fake piece by creating a Bit on the square
-        Bit* temp = new Bit();
-        temp->LoadTextureFromFile("square.png"); // texture does not matter for logic
-        temp->setOwner(p);
-
-        target->setBit(temp);
-
-        Player* w = checkForWinner();
-
-        // Undo
-        target->destroyBit();
-
-        if (w == p)
-            return col;
+        if (board[row][col] == 0)
+        {
+            board[row][col] = playerIdx + 1;
+            return row;
+        }
     }
-    return -1;
+    return -1; // column full
+}
+
+bool Connect4::checkWinOnBoard(const Board& board, int playerIdx) const
+{
+    int p = playerIdx + 1;
+    // Horizontal
+    for (int y = 0; y < ROWS; ++y)
+        for (int x = 0; x <= COLS - 4; ++x)
+            if (board[y][x]==p && board[y][x+1]==p && board[y][x+2]==p && board[y][x+3]==p)
+                return true;
+    // Vertical
+    for (int x = 0; x < COLS; ++x)
+        for (int y = 0; y <= ROWS - 4; ++y)
+            if (board[y][x]==p && board[y+1][x]==p && board[y+2][x]==p && board[y+3][x]==p)
+                return true;
+    // Diagonal down-right
+    for (int y = 0; y <= ROWS - 4; ++y)
+        for (int x = 0; x <= COLS - 4; ++x)
+            if (board[y][x]==p && board[y+1][x+1]==p && board[y+2][x+2]==p && board[y+3][x+3]==p)
+                return true;
+    // Diagonal down-left
+    for (int y = 0; y <= ROWS - 4; ++y)
+        for (int x = 3; x < COLS; ++x)
+            if (board[y][x]==p && board[y+1][x-1]==p && board[y+2][x-2]==p && board[y+3][x-3]==p)
+                return true;
+    return false;
+}
+
+int Connect4::scoreWindow(int a, int b, int c, int d, int playerIdx) const
+{
+    int p   = playerIdx + 1;
+    int opp = (playerIdx == 0) ? 2 : 1;
+    int pieces = 0, empty = 0, oppPieces = 0;
+    for (int v : {a, b, c, d})
+    {
+        if      (v == p)   ++pieces;
+        else if (v == opp) ++oppPieces;
+        else               ++empty;
+    }
+    if (pieces == 4)                    return  100;
+    if (pieces == 3 && empty == 1)      return    5;
+    if (pieces == 2 && empty == 2)      return    2;
+    if (oppPieces == 3 && empty == 1)   return   -4;
+    return 0;
+}
+
+int Connect4::evaluateBoard(const Board& board, int playerIdx) const
+{
+    int score = 0;
+    int p = playerIdx + 1;
+
+    // Center column preference
+    for (int y = 0; y < ROWS; ++y)
+        if (board[y][COLS / 2] == p) score += 3;
+
+    // Horizontal windows
+    for (int y = 0; y < ROWS; ++y)
+        for (int x = 0; x <= COLS - 4; ++x)
+            score += scoreWindow(board[y][x], board[y][x+1], board[y][x+2], board[y][x+3], playerIdx);
+
+    // Vertical windows
+    for (int x = 0; x < COLS; ++x)
+        for (int y = 0; y <= ROWS - 4; ++y)
+            score += scoreWindow(board[y][x], board[y+1][x], board[y+2][x], board[y+3][x], playerIdx);
+
+    // Diagonal down-right
+    for (int y = 0; y <= ROWS - 4; ++y)
+        for (int x = 0; x <= COLS - 4; ++x)
+            score += scoreWindow(board[y][x], board[y+1][x+1], board[y+2][x+2], board[y+3][x+3], playerIdx);
+
+    // Diagonal down-left
+    for (int y = 0; y <= ROWS - 4; ++y)
+        for (int x = 3; x < COLS; ++x)
+            score += scoreWindow(board[y][x], board[y+1][x-1], board[y+2][x-2], board[y+3][x-3], playerIdx);
+
+    return score;
+}
+
+// Returns score from currentPlayer's 
+int Connect4::negamax(Board& board, int depth, int alpha, int beta, int playerIdx) const
+{
+    int oppIdx = 1 - playerIdx;
+
+    if (checkWinOnBoard(board, oppIdx))
+        return -100000 - depth; 
+
+    // Check draw 
+    bool full = true;
+    for (int x = 0; x < COLS; ++x)
+        if (board[0][x] == 0) { full = false; break; }
+    if (full) return 0;
+
+    if (depth == 0)
+        return evaluateBoard(board, playerIdx);
+
+    std::array<int, COLS> order = {3, 2, 4, 1, 5, 0, 6};
+    int best = -200000;
+
+    for (int col : order)
+    {
+        int row = dropOnBoard(board, col, playerIdx);
+        if (row == -1) continue;
+
+        int score = -negamax(board, depth - 1, -beta, -alpha, oppIdx);
+        board[row][col] = 0; // undo
+
+        if (score > best)  best = score;
+        if (score > alpha) alpha = score;
+        if (alpha >= beta) break; // prune
+    }
+    return best;
 }
 
 void Connect4::updateAI()
 {
-    // AI player is the Game player at index _gameOptions.AIPlayer
     Player* ai = getPlayerAt(getAIPlayer());
-    Player* human = getPlayerAt(getHumanPlayer());
+    int aiIdx  = ai->playerNumber(); // 0 or 1
+    int oppIdx = 1 - aiIdx;
 
-    // 1) Win if possible
-    int col = findWinningMoveFor(ai);
+    Board board = getBoardState();
 
-    // 2) Block if human can win next
-    if (col == -1)
-        col = findWinningMoveFor(human);
+    int bestScore = -200000;
+    int bestCol   = firstValidMovePreferCenter();
 
-    // 3) Otherwise pick a reasonable column
-    if (col == -1)
-        col = firstValidMovePreferCenter();
+    std::array<int, COLS> order = {3, 2, 4, 1, 5, 0, 6};
+    for (int col : order)
+    {
+        int row = dropOnBoard(board, col, aiIdx);
+        if (row == -1) continue;
 
-    if (col == -1) return;
+        int score = -negamax(board, 6, -200000, 200000, oppIdx);
+        board[row][col] = 0;
 
-    ChessSquare* target = lowestEmptyInColumn(col);
+        if (score > bestScore)
+        {
+            bestScore = score;
+            bestCol   = col;
+        }
+    }
+
+    if (bestCol == -1) return;
+
+    ChessSquare* target = lowestEmptyInColumn(bestCol);
     if (!target) return;
 
     Bit* bit = pieceForPlayer(ai->playerNumber());
-    bit->setPosition(target->getPosition());
+    // Animate piece dropping from above
+    ChessSquare* topSquare = _grid->getSquare(bestCol, 0);
+    bit->setPosition(ImVec2(target->getPosition().x, topSquare->getPosition().y - 80.0f));
     target->setBit(bit);
+    bit->moveTo(target->getPosition());
 
     endTurn();
 }

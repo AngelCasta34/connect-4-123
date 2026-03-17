@@ -67,14 +67,25 @@ namespace ClassGame {
                     ImGui::Text("Current Board State: %s", game->stateString().c_str());
 
                     if (game->gameHasAI()) {
+                        static int aiPlayerChoice = 1; // 0 = player 1 (Red), 1 = player 2 (Yellow)
                         bool aiEnabled = game->_gameOptions.AIPlaying;
+
+                        ImGui::Text("AI plays as:");
+                        ImGui::SameLine();
+                        if (ImGui::RadioButton("Player 1 (Red)", &aiPlayerChoice, 0)) {
+                            if (aiEnabled) game->setAIPlaying(true, 0);
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::RadioButton("Player 2 (Yellow)", &aiPlayerChoice, 1)) {
+                            if (aiEnabled) game->setAIPlaying(true, 1);
+                        }
+
                         if (ImGui::Checkbox("Play vs AI", &aiEnabled)) {
-                            // player 1 becomes AI when enabled
-                            game->setAIPlaying(aiEnabled, 1);
+                            game->setAIPlaying(aiEnabled, aiPlayerChoice);
                         }
 
                         if (game->_gameOptions.AIPlaying) {
-                            ImGui::Text("AI Player: %d", game->getAIPlayer());
+                            ImGui::Text("AI is Player %d", game->getAIPlayer() + 1);
                         }
                     }
                 }
